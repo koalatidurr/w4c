@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: w4c_postgres
+    environment:
+      POSTGRES_DB: w4c_db
+      POSTGRES_USER: w4c_user
+      POSTGRES_PASSWORD: w4c_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U w4c_user -d w4c_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: w4c_api
+    ports:
+      - "8000:8000"
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: w4c_db
+      DB_USERNAME: w4c_user
+      DB_PASSWORD: w4c_pass
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+    volumes:
+      - ./apps/api:/var/www/html
+      - ./apps/api/storage/logs:/var/www/html/storage/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: w4c_web
+    ports:
+      - "3000:3000"
+    environment:
+      NUXT_PUBLIC_API_BASE: http://localhost:8000/api
+    # No volume mount - image contains everything needed
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

@@ -1,0 +1,464 @@
+openapi: 3.0.3
+info:
+  title: Waste4Change API
+  description: |
+    API for Waste Management Reporting System.
+    Provides endpoints for schedule management and dashboard reporting.
+  version: 1.0.0
+  contact:
+    email: tech@waste4change.com
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+tags:
+  - name: Schedules
+    description: Schedule management endpoints
+  - name: Dashboard
+    description: Dashboard reporting and analytics endpoints
+
+paths:
+  /api/schedules:
+    get:
+      tags:
+        - Schedules
+      summary: List all schedules
+      description: Returns a paginated list of schedules with optional date filtering.
+      parameters:
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter schedules from this date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter schedules until this date
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 15
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated schedule list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScheduleSummary'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  /api/schedules/{id}:
+    get:
+      tags:
+        - Schedules
+      summary: Get schedule detail
+      description: Returns complete schedule information including collect and sort data.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Schedule ID
+      responses:
+        '200':
+          description: Schedule detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ScheduleDetail'
+        '404':
+          description: Schedule not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/dashboard:
+    get:
+      tags:
+        - Dashboard
+      summary: Get complete dashboard data
+      description: Returns all 7 dashboard sections including waste weight chart, transport summary, sorting status, averages, top wastes, percentages, and trends.
+      parameters:
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter from date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter to date
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DONE, SKIP]
+          description: Filter by collect status
+        - name: sort_status
+          in: query
+          schema:
+            type: string
+            enum: [sorted, unsorted]
+          description: Filter by sorting status
+        - name: trashbag_id
+          in: query
+          schema:
+            type: integer
+          description: Filter by trashbag type
+        - name: waste_id
+          in: query
+          schema:
+            type: integer
+          description: Filter by waste/material
+        - name: group_by
+          in: query
+          schema:
+            type: string
+            enum: [day, month, year]
+            default: day
+          description: Group data by period
+      responses:
+        '200':
+          description: Complete dashboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      waste_weight_chart:
+                        $ref: '#/components/schemas/WasteWeightChart'
+                      transport_summary:
+                        $ref: '#/components/schemas/TransportSummary'
+                      sorting_status:
+                        $ref: '#/components/schemas/SortingStatus'
+                      average_weight_by_waste:
+                        type: object
+                      top5_heaviest_wastes:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TopWaste'
+                      done_skip_percentage:
+                        $ref: '#/components/schemas/DoneSkipPercentage'
+                      schedule_realization_trend:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TrendItem'
+
+  /api/dashboard/waste-weight:
+    get:
+      tags:
+        - Dashboard
+      summary: Waste weight chart data
+      parameters:
+        - $ref: '#/components/parameters/date_from'
+        - $ref: '#/components/parameters/date_to'
+        - $ref: '#/components/parameters/group_by'
+      responses:
+        '200':
+          description: Waste weight chart
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/WasteWeightChart'
+
+  /api/dashboard/transport:
+    get:
+      tags:
+        - Dashboard
+      summary: Transport summary
+      parameters:
+        - $ref: '#/components/parameters/date_from'
+        - $ref: '#/components/parameters/date_to'
+      responses:
+        '200':
+          description: Transport summary data
+
+  /api/dashboard/sorting:
+    get:
+      tags:
+        - Dashboard
+      summary: Sorting status
+      parameters:
+        - $ref: '#/components/parameters/date_from'
+        - $ref: '#/components/parameters/date_to'
+      responses:
+        '200':
+          description: Sorting status data
+
+  /api/dashboard/top-wastes:
+    get:
+      tags:
+        - Dashboard
+      summary: Top 5 heaviest wastes
+      parameters:
+        - $ref: '#/components/parameters/date_from'
+        - $ref: '#/components/parameters/date_to'
+      responses:
+        '200':
+          description: Top 5 heaviest waste materials
+
+  /api/dashboard/trend:
+    get:
+      tags:
+        - Dashboard
+      summary: Schedule vs realization trend
+      parameters:
+        - $ref: '#/components/parameters/date_from'
+        - $ref: '#/components/parameters/date_to'
+        - $ref: '#/components/parameters/group_by'
+      responses:
+        '200':
+          description: Schedule realization trend data
+
+components:
+  parameters:
+    date_from:
+      name: date_from
+      in: query
+      schema:
+        type: string
+        format: date
+    date_to:
+      name: date_to
+      in: query
+      schema:
+        type: string
+        format: date
+    group_by:
+      name: group_by
+      in: query
+      schema:
+        type: string
+        enum: [day, month, year]
+        default: day
+
+  schemas:
+    ScheduleSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        client_id:
+          type: integer
+        client_name:
+          type: string
+        date:
+          type: string
+          format: date
+        has_collect:
+          type: boolean
+        has_sort:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ScheduleDetail:
+      allOf:
+        - $ref: '#/components/schemas/ScheduleSummary'
+        - type: object
+          properties:
+            collect:
+              $ref: '#/components/schemas/CollectDetail'
+
+    CollectDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        schedule_id:
+          type: integer
+        code:
+          type: string
+        status:
+          type: string
+          enum: [DONE, SKIP]
+        collect_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollectItem'
+        sort:
+          $ref: '#/components/schemas/SortDetail'
+
+    CollectItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        trashbag_id:
+          type: integer
+        trashbag_name:
+          type: string
+        quantity:
+          type: integer
+
+    SortDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        collect_id:
+          type: integer
+        code:
+          type: string
+        total_weight:
+          type: number
+        sort_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SortItem'
+
+    SortItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        waste_id:
+          type: integer
+        waste_name:
+          type: string
+        weight:
+          type: number
+
+    WasteWeightChart:
+      type: object
+      properties:
+        periods:
+          type: array
+          items:
+            type: string
+        datasets:
+          type: array
+          items:
+            type: object
+            properties:
+              waste:
+                type: string
+              data:
+                type: array
+                items:
+                  type: number
+
+    TransportSummary:
+      type: object
+      properties:
+        done:
+          type: integer
+        skip:
+          type: integer
+        not_collected:
+          type: integer
+        total:
+          type: integer
+
+    SortingStatus:
+      type: object
+      properties:
+        sorted:
+          type: integer
+        unsorted:
+          type: integer
+        total:
+          type: integer
+
+    TopWaste:
+      type: object
+      properties:
+        waste_id:
+          type: integer
+        waste_name:
+          type: string
+        total_weight:
+          type: number
+        avg_weight:
+          type: number
+        item_count:
+          type: integer
+
+    DoneSkipPercentage:
+      type: object
+      properties:
+        done_pct:
+          type: number
+        skip_pct:
+          type: number
+        total:
+          type: integer
+
+    TrendItem:
+      type: object
+      properties:
+        period:
+          type: string
+        scheduled:
+          type: integer
+        collected:
+          type: integer
+        collected_pct:
+          type: number
+
+    PaginationMeta:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
