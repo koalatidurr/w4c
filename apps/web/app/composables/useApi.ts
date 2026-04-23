@@ -1,5 +1,6 @@
 /**
  * Simple fetch wrapper composable for Nuxt SPA.
+ * All API responses follow { success: boolean; data: T; message?: string; meta?, links? }
  */
 export function useApi() {
   const config = useRuntimeConfig()
@@ -15,7 +16,7 @@ export function useApi() {
     return url.toString()
   }
 
-  async function get<T>(path: string, params?: Record<string, any>): Promise<any> {
+  async function get(path: string, params?: Record<string, any>) {
     const res = await fetch(buildUrl(path, params))
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
     const body = await res.json()
@@ -24,10 +25,4 @@ export function useApi() {
   }
 
   return { get }
-}
-
-export interface PaginatedResult<T> {
-  data: T[]
-  meta: { current_page: number; last_page: number; per_page: number; total: number }
-  links: Record<string, string | null>
 }

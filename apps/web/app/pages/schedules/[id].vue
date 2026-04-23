@@ -138,7 +138,7 @@ async function fetchSchedule() {
   loading.value = true
   errorMsg.value = ''
   try {
-    schedule.value = await api.get(`/schedules/${route.params.id}`)
+    schedule.value = (await api.get(`/schedules/${route.params.id}`)).data
   } catch (e: any) {
     errorMsg.value = e.message
   } finally {
