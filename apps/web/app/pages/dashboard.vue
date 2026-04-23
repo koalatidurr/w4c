@@ -137,7 +137,7 @@ const topWastesSeries = computed(() => [{
   data: dash.value?.top5_heaviest_wastes?.map((w: any) => w.total_weight) || [],
 }])
 const topWastesOptions = computed(() => ({
-  chart: { id: 'top-wastes', toolbar: { show: false },
+  chart: { id: 'top-wastes', toolbar: { show: false } },
   xaxis: { categories: dash.value?.top5_heaviest_wastes?.map((w: any) => w.waste_name) || [] },
   colors: ['#16a34a'],
   dataLabels: { enabled: false },
@@ -152,7 +152,7 @@ const trendSeries = computed(() => {
   ]
 })
 const trendOptions = computed(() => ({
-  chart: { id: 'trend', toolbar: { show: false }, zoom: { enabled: false },
+  chart: { id: 'trend', toolbar: { show: false }, zoom: { enabled: false } },
   xaxis: { categories: dash.value?.schedule_realization_trend?.slice(0, 30).map((d: any) => d.period) || [] },
   stroke: { curve: 'smooth' as const },
   colors: ['#3b82f6', '#16a34a'],
