@@ -15,12 +15,12 @@ export function useApi() {
     return url.toString()
   }
 
-  async function get<T>(path: string, params?: Record<string, any>): Promise<T> {
+  async function get<T>(path: string, params?: Record<string, any>): Promise<any> {
     const res = await fetch(buildUrl(path, params))
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
-    const body = await res.json() as { success: boolean; data: T; message?: string }
+    const body = await res.json()
     if (!body.success) throw new Error(body.message ?? 'API error')
-    return body.data
+    return body
   }
 
   return { get }

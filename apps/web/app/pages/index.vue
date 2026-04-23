@@ -102,7 +102,7 @@ async function fetchSchedules() {
     const params: Record<string, any> = { page: 1, per_page: 15 }
     if (filters.date_from) params.date_from = filters.date_from
     if (filters.date_to) params.date_to = filters.date_to
-    const res = await api.get<PaginatedResult<any>>('/schedules', params)
+    const res = await api.get('/schedules', params)
     schedules.value = res.data
     Object.assign(meta, res.meta)
   } catch (e: any) {
