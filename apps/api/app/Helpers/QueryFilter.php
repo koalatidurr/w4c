@@ -25,9 +25,13 @@ class QueryFilter
         return $this->params;
     }
 
+    /**
+     * Default date range: last 30 days when no filter provided.
+     * Prevents aggregating all 1M+ rows on dashboard by default.
+     */
     public function dateFrom(): ?string
     {
-        return $this->get('date_from');
+        return $this->get('date_from') ?? now()->subDays(30)->toDateString();
     }
 
     public function dateTo(): ?string
