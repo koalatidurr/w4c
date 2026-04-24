@@ -16,7 +16,8 @@ class DashboardController extends Controller
 {
     /**
      * Full dashboard data.
-     * Returns all 7 dashboard sections in one response.
+     * Returns all 5 dashboard sections in one response.
+     * Data is pre-limited and optimized to prevent payload truncation.
      *
      * @OA\Get(
      *     path="/api/dashboard",

@@ -64,7 +64,7 @@
         <StatCard title="Total Selesai (DONE)" :value="dash.transport_summary.done.toLocaleString()" color="text-green-600" />
         <StatCard title="Total Dilewati (SKIP)" :value="dash.transport_summary.skip.toLocaleString()" color="text-yellow-600" />
         <StatCard title="Belum Diangkut" :value="dash.transport_summary.not_collected.toLocaleString()" />
-        <StatCard title="% Selesai" :value="dash.done_skip_percentage.done_pct + '%'" />
+        <StatCard title="% Selesai" :value="dash.transport_summary.done_pct + '%'" />
       </div>
 
       <!-- Charts row 1 -->
@@ -196,14 +196,14 @@ const donutOptions = {
 
 const weightSeries = computed(() => {
   if (!dash.value?.waste_weight_chart?.datasets) return []
-  return dash.value.waste_weight_chart.datasets.slice(0, 5).map((s: any) => ({
+  return dash.value.waste_weight_chart.datasets.map((s: any) => ({
     name: s.waste,
-    data: s.data.slice(0, 30),
+    data: s.data,
   }))
 })
 const weightOptions = computed(() => ({
   chart: { id: 'waste-weight', toolbar: { show: false }, zoom: { enabled: false } },
-  xaxis: { categories: dash.value?.waste_weight_chart?.periods?.slice(0, 30) || [] },
+  xaxis: { categories: dash.value?.waste_weight_chart?.periods || [] },
   dataLabels: { enabled: false },
   stroke: { curve: 'smooth' },
   colors: ['#16a34a', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'],
@@ -224,7 +224,7 @@ const topWastesOptions = computed(() => ({
 
 const trendSeries = computed(() => {
   if (!dash.value?.schedule_realization_trend) return []
-  const d = dash.value.schedule_realization_trend.slice(0, 30)
+  const d = dash.value.schedule_realization_trend
   return [
     { name: 'Terjadwal', data: d.map((x: any) => x.scheduled) },
     { name: 'Terealisasi', data: d.map((x: any) => x.collected) },
@@ -233,7 +233,7 @@ const trendSeries = computed(() => {
 const trendOptions = computed(() => ({
   chart: { id: 'trend', toolbar: { show: false }, zoom: { enabled: false } },
   xaxis: {
-    categories: dash.value?.schedule_realization_trend?.slice(0, 30).map((d: any) => d.period) || [],
+    categories: dash.value?.schedule_realization_trend?.map((d: any) => d.period) || [],
     labels: { rotate: -45, style: { fontSize: '11px' } },
   },
   stroke: { curve: 'smooth' as const },
