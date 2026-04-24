@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed reference data and optionally bulk schedules.
      *
+     * Idempotent: skips seeding if data already exists.
      * For 1 Million schedules, run with:
      *   php artisan db:seed --class=DatabaseSeeder --seed-schedules=1000000
      *
@@ -27,19 +28,24 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Static reference data
+        // 1. Static reference data (idempotent - skip if exists)
         $this->seedReferenceData();
 
-        // 2. Bulk schedules
+        // 2. Bulk schedules (idempotent - skip if schedules already exist)
         $targetSchedules = (int) ($_ENV['SEED_SCHEDULES'] ?? 1000);
         $this->seedBulkSchedules($targetSchedules);
 
-        // 3. Generate collects for past schedules (in chunks, low memory)
+        // 3. Generate collects for past schedules (idempotent - skip if collects exist)
         $this->seedCollects();
     }
 
     protected function seedReferenceData(): void
     {
+        if (Trashbag::count() > 0) {
+            $this->command->info('Reference data already exists, skipping.');
+            return;
+        }
+
         Trashbag::factory()->count(10)->create();
         Waste::factory()->count(100)->create();
         Client::factory()->count(50)->create();
@@ -48,12 +54,26 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Seed schedules in batches to handle millions of rows.
+     * Idempotent: skips if schedule count matches or exceeds target.
      */
     protected function seedBulkSchedules(int $totalTarget): void
     {
-        $this->command->info("Seeding {$totalTarget} schedules in chunks...");
+        $currentCount = Schedule::count();
+
+        if ($currentCount >= $totalTarget) {
+            $this->command->info("Schedules already seeded ({$currentCount}), skipping.");
+            return;
+        }
+
+        $remaining = $totalTarget - $currentCount;
+        $this->command->info("Seeding {$remaining} additional schedules in chunks...");
 
         $clientIds = Client::pluck('id')->toArray();
+        if (empty($clientIds)) {
+            $this->command->error('No clients found. Run seedReferenceData first.');
+            return;
+        }
+
         $startDate = Carbon::now()->subYears(4)->startOfDay();
         $endDate = Carbon::now()->addYear()->startOfDay();
         $totalDays = $startDate->diffInDays($endDate);
@@ -90,9 +110,11 @@ class DatabaseSeeder extends Seeder
     /**
      * Generate collects for past schedules using cursor + raw inserts.
      * Memory efficient - never loads full result set.
+     * Idempotent: only creates collects for schedules that don't have one yet.
      */
     protected function seedCollects(): void
     {
+        $existingCollectCount = Collect::count();
         $this->command->info('Generating collects for past schedules...');
 
         $trashbagIds = Trashbag::pluck('id')->toArray();
@@ -227,6 +249,6 @@ class DatabaseSeeder extends Seeder
             $currentDate->addDays($chunkDays);
         }
 
-        $this->command->info("Seeded {$collectCount} collects, {$sortCount} sorts.");
+        $this->command->info("Collects seeded: {$collectCount} new collects, {$sortCount} sorts. (Total: " . Collect::count() . " collects)");
     }
 }

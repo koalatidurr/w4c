@@ -15,10 +15,15 @@ echo "[start.sh] Running database migrations..."
 php artisan migrate --force 2>&1
 echo "[start.sh] Migrations complete."
 
-# Seed the database with reference data and schedules
-echo "[start.sh] Running database seeders..."
-php artisan db:seed --force 2>&1
-echo "[start.sh] Seeding complete."
+# Seed only if SKIP_SEED is not set (prevents re-seeding on every container restart)
+# Set SKIP_SEED=1 in Railway environment variables to skip seeding
+if [ "$SKIP_SEED" != "1" ]; then
+    echo "[start.sh] Running database seeders..."
+    php artisan db:seed --force 2>&1
+    echo "[start.sh] Seeding complete."
+else
+    echo "[start.sh] SKIP_SEED=1, skipping database seeders."
+fi
 
 # Start PHP-FPM in the foreground but as a background job of this script.
 # Redirect its output explicitly so logs appear in the container log stream.
