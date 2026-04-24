@@ -27,7 +27,7 @@ class QueryFilter
 
     public function dateFrom(): ?string
     {
-        return $this->get('date_from');
+        return $this->get('date_from') ?? now()->subDays(30)->toDateString();
     }
 
     public function dateTo(): ?string
