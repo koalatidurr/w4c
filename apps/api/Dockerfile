@@ -1,4 +1,4 @@
-FROM php:8.4-cli-alpine
+FROM php:8.4-fpm-alpine
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -21,7 +21,8 @@ RUN apk add --no-cache \
     pkgconf \
     re2c \
     nodejs \
-    npm
+    npm \
+    nginx
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo pdo_pgsql bcmath
@@ -38,8 +39,19 @@ COPY . .
 # Install PHP deps (dev dependencies included for artisan commands)
 RUN composer install --no-interaction --optimize-autoloader --ignore-platform-reqs
 
+# Copy Nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy startup script and make it executable
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+# Ensure storage and cache directories are writable
+RUN mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
+
 # Expose port
 EXPOSE 8000
 
-# Start Laravel
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+# Start Nginx + PHP-FPM
+CMD ["/start.sh"]
