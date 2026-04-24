@@ -15,15 +15,11 @@ echo "[start.sh] Running database migrations..."
 php artisan migrate --force 2>&1
 echo "[start.sh] Migrations complete."
 
-# Seed only if SKIP_SEED is not set (prevents re-seeding on every container restart)
-# Set SKIP_SEED=1 in Railway environment variables to skip seeding
-if [ "$SKIP_SEED" != "1" ]; then
-    echo "[start.sh] Running database seeders..."
-    php artisan db:seed --force 2>&1
-    echo "[start.sh] Seeding complete."
-else
-    echo "[start.sh] SKIP_SEED=1, skipping database seeders."
-fi
+# NOTE: Seeding has been removed from startup path.
+# The seeder is idempotent but should only be run MANUALLY:
+#   php artisan db:seed --class=DatabaseSeeder --force
+# Running seeding on every container start causes timeouts on Railway.
+# After initial setup, run seeding once locally, then deploy.
 
 # Start PHP-FPM in the foreground but as a background job of this script.
 # Redirect its output explicitly so logs appear in the container log stream.
