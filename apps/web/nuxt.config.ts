@@ -26,6 +26,10 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: 'Waste4Change - Waste Management',
+      htmlAttrs: { lang: 'id' },
+      link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+      ],
     },
   },
 

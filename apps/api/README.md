@@ -6,12 +6,12 @@ Laravel 13 + PostgreSQL backend for the Waste Management Reporting System.
 
 ```bash
 # Start all services
-docker compose up -d
+docker compose up -d postgres api
 
-# Run migrations
+# Run migrations + indexes
 docker compose exec api php artisan migrate --force
 
-# Seed test data (~3K schedules, ~1.5K collects)
+# Seed test data
 docker compose exec api php artisan db:seed --force
 
 # Swagger docs
@@ -31,14 +31,22 @@ open http://localhost:8000/api/documentation
 | GET | `/api/dashboard/top-wastes` | Top 5 heaviest wastes |
 | GET | `/api/dashboard/trend` | Schedule vs realization trend |
 
+## Dashboard Caching
+
+All dashboard endpoints are cached in the `cache` database table. Cache key is based on all filter parameters (date_from, date_to, group_by, status, etc.). Default TTL is 5 minutes.
+
+To clear the cache:
+```bash
+docker compose exec api php artisan cache:clear
+```
+
 ## Seeding 1 Million Schedules
 
 ```bash
-# Run seeder with 1M target
 docker compose exec api php artisan db:seed --class=DatabaseSeeder --seed-schedules=1000000 --force
 ```
 
-Seeds 10 trashbags, 100 wastes, 50 clients, then bulk-inserts schedules (~550/day across 4 years back + 1 year forward). Collects generated for past schedules only (80% DONE / 20% SKIP). Sorts created only for DONE collects.
+Seeds 10 trashbags, 100 wastes, ~500 clients, then bulk-inserts schedules (~550/day across 4 years back + 1 year forward). Collects generated for past schedules only (80% DONE / 20% SKIP). Sorts created only for DONE collects.
 
 ## Tech Decisions
 
@@ -46,4 +54,6 @@ Seeds 10 trashbags, 100 wastes, 50 clients, then bulk-inserts schedules (~550/da
 - **QueryFilter** (`app/Helpers/`): Parses common filter params (date_from, date_to, group_by, etc.) keeping controllers DRY.
 - **ApiResponse** (`app/Helpers/`): Consistent JSON wrapper (`{success, data, meta}`).
 - **Chunked seeding**: Schedules inserted in 1,000-row batches to handle 1M+ rows.
+- **Database caching**: Uses Laravel's `Cache::remember()` with database driver — no Redis needed.
+- **Performance indexes**: Strategic indexes on `schedules`, `collects`, `sort_items` for fast aggregations.
 - **OpenAPI spec**: `openapi.yaml` at project root, Swagger UI at `/api/documentation`.

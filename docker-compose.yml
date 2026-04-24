@@ -1,7 +1,24 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: w4c_redis
+    networks:
+      - w4c_network
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
   postgres:
     image: postgres:16-alpine
     container_name: w4c_postgres
+    networks:
+      - w4c_network
     environment:
       POSTGRES_DB: w4c_db
       POSTGRES_USER: w4c_user
@@ -21,23 +38,29 @@ services:
       context: ./apps/api
       dockerfile: Dockerfile
     container_name: w4c_api
+    networks:
+      - w4c_network
     ports:
       - "8000:8000"
     environment:
       DB_CONNECTION: pgsql
-      DB_HOST: postgres
+      DB_HOST: w4c_postgres
       DB_PORT: 5432
       DB_DATABASE: w4c_db
       DB_USERNAME: w4c_user
       DB_PASSWORD: w4c_pass
+      CACHE_STORE: redis
+      REDIS_HOST: w4c_redis
+      REDIS_PORT: 6379
       APP_ENV: local
       APP_DEBUG: "true"
       APP_URL: http://localhost:8000
     volumes:
-      - ./apps/api:/var/www/html
       - ./apps/api/storage/logs:/var/www/html/storage/logs
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   web:
@@ -45,13 +68,19 @@ services:
       context: ./apps/web
       dockerfile: Dockerfile
     container_name: w4c_web
+    networks:
+      - w4c_network
     ports:
       - "3000:3000"
     environment:
       NUXT_PUBLIC_API_BASE: http://localhost:8000/api
-    # No volume mount - image contains everything needed
     depends_on:
       - api
 
+networks:
+  w4c_network:
+    driver: bridge
+
 volumes:
   postgres_data:
+  redis_data:

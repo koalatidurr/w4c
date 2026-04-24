@@ -20,6 +20,11 @@ class QueryFilter
         return $this->params[$key] ?? $default;
     }
 
+    public function getAll(): array
+    {
+        return $this->params;
+    }
+
     public function dateFrom(): ?string
     {
         return $this->get('date_from');

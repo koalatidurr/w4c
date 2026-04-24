@@ -1,17 +1,28 @@
 # Waste4Change Web
 
-Nuxt 3 SPA + TailwindCSS frontend consuming the Laravel REST API.
+Nuxt 4 SPA + TailwindCSS frontend consuming the Laravel REST API.
 
 ## Setup
 
 ```bash
-# Build & start all services
-docker compose up -d --build
-
-# Local dev (requires Node 20+)
 cd apps/web
-npm install
-npm run dev
+bun install
+bun run dev
+```
+
+The API must be running at `http://localhost:8000/api`. For Docker setup:
+
+```bash
+cd ../..
+docker compose up -d postgres api
+bun run dev
+```
+
+## Production Build
+
+```bash
+bun run build
+node .output/server/index.mjs
 ```
 
 ## Pages
@@ -20,11 +31,19 @@ npm run dev
 - `/schedules/{id}` — Schedule detail (collect items, sort items)
 - `/dashboard` — Full dashboard with charts + filter controls
 
+## API Base URL
+
+Configure via environment variable:
+```bash
+NUXT_PUBLIC_API_BASE=http://localhost:8000/api bun run dev
+```
+
 ## Tech Decisions
 
-- **Nuxt SPA (SSR disabled)** — `ssr: false` in `nuxt.config.ts`. All rendering is client-side, no hydration issues.
-- **`useApi()` composable** (`app/composables/useApi.ts`) — Thin wrapper around Nuxt's `$fetch` with typed `get<T>()` method. Returns data directly, no plugin needed.
-- **Reactive state** — Pages use `ref()`/`reactive()` for `loading`, `errorMsg`, and `data`. Filter changes trigger refetch via `watch()`.
+- **SPA mode** — No SSR, all rendering is client-side for fast API-driven rendering.
+- **`useApi()` composable** (`app/composables/useApi.ts`): Thin fetch wrapper with in-memory caching, TTL support, and request deduplication.
+- **Debounced filters** — 300-400ms delay prevents API spam on filter changes.
+- **Skeleton loaders + error states** — Loading states with retry buttons for better UX.
 - **ApexCharts** via `vue3-apexcharts`, wrapped in `<ClientOnly>` for SSR safety.
-- **Shadcn-style components** (`app/components/ui/`) — Hand-crafted UI components (Card, Table, Badge, Button, Input, etc.).
-- API base URL configurable via `NUXT_PUBLIC_API_BASE` env var.
+- **Custom UI components** (`app/components/`): Hand-crafted components (Badge, Button, Card, Table, Input, Skeleton, etc.) — no external UI library dependencies.
+- **Design tokens**: CSS variables in `app/assets/css/main.css` for consistent theming.

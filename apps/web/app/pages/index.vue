@@ -17,7 +17,10 @@
             <Input type="date" v-model="filters.date_to" />
           </div>
           <div class="flex items-end">
-            <Button variant="outline" @click="resetFilters">Reset</Button>
+            <Button variant="outline" @click="resetFilters" :disabled="loading">
+              <RotateCcw class="h-4 w-4 mr-2" />
+              Reset
+            </Button>
           </div>
         </div>
       </CardContent>
@@ -25,30 +28,51 @@
 
     <Card>
       <CardContent class="p-0">
-        <div v-if="loading" class="flex items-center justify-center p-12">
-          <div class="text-muted-foreground">Memuat...</div>
+        <!-- Loading skeleton -->
+        <div v-if="loading" class="p-6 space-y-3">
+          <div v-for="i in 5" :key="i" class="flex gap-4 items-center">
+            <Skeleton class="h-4 w-12" />
+            <Skeleton class="h-4 w-40" />
+            <Skeleton class="h-4 w-28" />
+            <Skeleton class="h-4 w-20" />
+            <Skeleton class="h-4 w-20" />
+            <Skeleton class="h-8 w-16 ml-auto" />
+          </div>
         </div>
+
+        <!-- Error state -->
         <div v-else-if="errorMsg" class="flex items-center justify-center p-12">
-          <div class="text-destructive">{{ errorMsg }}</div>
+          <div class="text-destructive text-center">
+            <AlertCircle class="h-8 w-8 mx-auto mb-2" />
+            <p>{{ errorMsg }}</p>
+            <Button variant="outline" size="sm" class="mt-2" @click="fetchSchedules">Coba Lagi</Button>
+          </div>
         </div>
+
+        <!-- Empty state -->
         <div v-else-if="!schedules.length" class="flex items-center justify-center p-12">
-          <div class="text-muted-foreground">Tidak ada jadwal ditemukan</div>
+          <div class="text-center">
+            <Inbox class="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+            <div class="text-muted-foreground">Tidak ada jadwal ditemukan</div>
+          </div>
         </div>
+
+        <!-- Data table -->
         <Table v-else>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
+              <TableHead class="w-12">ID</TableHead>
               <TableHead>Klien</TableHead>
               <TableHead>Tanggal</TableHead>
               <TableHead>Status Angkut</TableHead>
               <TableHead>Status Pilah</TableHead>
-              <TableHead>Aksi</TableHead>
+              <TableHead class="w-20">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow v-for="s in schedules" :key="s.id">
-              <TableCell>{{ s.id }}</TableCell>
-              <TableCell>{{ s.client_name || 'Klien #' + s.client_id }}</TableCell>
+              <TableCell class="font-mono text-xs">{{ s.id }}</TableCell>
+              <TableCell class="font-medium">{{ s.client_name || 'Klien #' + s.client_id }}</TableCell>
               <TableCell>{{ formatDate(s.date) }}</TableCell>
               <TableCell>
                 <Badge :variant="statusVariant(s)">
@@ -69,13 +93,18 @@
           </TableBody>
         </Table>
 
+        <!-- Pagination -->
         <div v-if="meta.last_page > 1" class="flex items-center justify-between border-t px-6 py-4">
           <div class="text-sm text-muted-foreground">
             Halaman {{ meta.current_page }} dari {{ meta.last_page }} ({{ meta.total }} total)
           </div>
           <div class="flex gap-2">
-            <Button variant="outline" size="sm" :disabled="meta.current_page <= 1" @click="goToPage(meta.current_page - 1)">Previous</Button>
-            <Button variant="outline" size="sm" :disabled="meta.current_page >= meta.last_page" @click="goToPage(meta.current_page + 1)">Next</Button>
+            <Button variant="outline" size="sm" :disabled="meta.current_page <= 1" @click="goToPage(meta.current_page - 1)">
+              Previous
+            </Button>
+            <Button variant="outline" size="sm" :disabled="meta.current_page >= meta.last_page" @click="goToPage(meta.current_page + 1)">
+              Next
+            </Button>
           </div>
         </div>
       </CardContent>
@@ -84,43 +113,58 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { reactive, computed, watch } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
+import { RotateCcw, AlertCircle, Inbox } from 'lucide-vue-next'
 import { useApi } from '~/composables/useApi'
 
 const api = useApi()
-
 const filters = reactive({ date_from: '', date_to: '' })
-const schedules = ref<any[]>([])
-const meta = reactive({ current_page: 1, last_page: 1, total: 0 })
+const currentPage = ref(1)
+
+const queryParams = computed(() => {
+  const p: Record<string, any> = { page: currentPage.value, per_page: 15 }
+  if (filters.date_from) p.date_from = filters.date_from
+  if (filters.date_to) p.date_to = filters.date_to
+  return p
+})
+
 const loading = ref(false)
 const errorMsg = ref('')
+const scheduleData = ref<any>(null)
 
-async function fetchSchedules() {
+const schedules = computed(() => scheduleData.value?.data ?? [])
+const meta = computed(() => scheduleData.value?.meta ?? { current_page: 1, last_page: 1, total: 0 })
+
+// Debounced fetch to avoid too many API calls on filter changes
+const debouncedFetch = useDebounceFn(async () => {
   loading.value = true
   errorMsg.value = ''
   try {
-    const params: Record<string, any> = { page: 1, per_page: 15 }
-    if (filters.date_from) params.date_from = filters.date_from
-    if (filters.date_to) params.date_to = filters.date_to
-    const res = await api.get('/schedules', params)
-    schedules.value = res.data
-    Object.assign(meta, res.meta)
+    scheduleData.value = await api.get('/schedules', queryParams.value, { cacheMs: 2 * 60 * 1000 })
   } catch (e: any) {
     errorMsg.value = e.message
   } finally {
     loading.value = false
   }
-}
+}, 300)
+
+watch([() => filters.date_from, () => filters.date_to], () => {
+  currentPage.value = 1
+  debouncedFetch()
+})
 
 function resetFilters() {
   filters.date_from = ''
   filters.date_to = ''
-  fetchSchedules()
+  currentPage.value = 1
+  debouncedFetch()
 }
 
 function goToPage(page: number) {
-  meta.current_page = page
-  fetchSchedules()
+  currentPage.value = page
+  debouncedFetch()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function formatDate(dateStr: string) {
@@ -135,10 +179,6 @@ function statusVariant(s: any) {
     : 'outline'
 }
 
-watch([() => filters.date_from, () => filters.date_to], () => {
-  meta.current_page = 1
-  fetchSchedules()
-})
-
-fetchSchedules()
+// Initial fetch
+debouncedFetch()
 </script>
