@@ -1,8 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DebugController;
 use App\Http\Controllers\Api\ScheduleController;
 use Illuminate\Support\Facades\Route;
+
+// Temporary debug route — remove once data issue is resolved.
+Route::get('/debug/schedules', [DebugController::class, 'schedules']);
 
 Route::get('/schedules', [ScheduleController::class, 'index']);
 Route::get('/schedules/{id}', [ScheduleController::class, 'show']);
